@@ -1,0 +1,190 @@
+{
+  "name": "Pipeline B v2 — Domain-Bridged + Google Drive & Auto-Folders",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "🎯 Domain-Bridged Cover Letter Generator",
+        "formDescription": "Paste the full job listing page. Gemini extracts 15 metadata fields, bridges your exact coursework/projects to the role, and archives the PDF locally & to Google Drive.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "raw_job_page",
+              "fieldType": "textarea",
+              "requiredField": true,
+              "placeholder": "Paste the entire job page dump here (job title, requirements, company mission, contact info, etc.)"
+            },
+            {
+              "fieldLabel": "output_language",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  { "option": "German B1" },
+                  { "option": "English C1" }
+                ]
+              }
+            }
+          ]
+        },
+        "options": {
+          "responseMode": "responseNode"
+        }
+      },
+      "id": "node-form-trigger",
+      "name": "Form Trigger",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.1,
+      "position": [100, 300],
+      "webhookId": "pipeline-b-domain-bridged"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\nconst candidateArsenal = {\n  name: 'Shikhar Thakur',\n  location: 'Nürnberg, Germany',\n  phone: '+49 15510180516',\n  email: 'shikhar.thakur@fau.de',\n  linkedin: 'linkedin.com/in/shikhar2404',\n  degree: 'M.Sc. International Information Systems (Wirtschaftsinformatik), FAU Erlangen-Nürnberg — 3rd semester, English-taught',\n  languages: {\n    english: 'C1 / Fluent',\n    german: 'B1 — actively learning, honest disclosure required in every letter'\n  },\n  academic_modules: [\n    'Process Analytics & BPM: business process lifecycles, process mining, event log analysis, bottleneck/operational-efficiency optimization',\n    'Cloud & Distributed Systems: GCP deployment, client-server architecture, WebSockets, REST APIs'\n  ],\n  proof_points: [\n    {\n      id: 'taskorbit',\n      label: 'TaskOrbit (FAU AMOS open-source project, Prof. Dr. Riehle)',\n      facts: '41 commits; asynchronous agentic AI orchestration pipeline; FastAPI (Python) backend; real-time WebSockets; Syft SBOM compliance; React/TypeScript frontend; deployed on GCP; worked in an international Scrum team.',\n      bridges: [\n        'Real-time IoT/telemetry & fleet-monitoring pipelines (via async orchestration + WebSockets)',\n        'Cloud-based service architecture and deployment experience (via GCP) — transferable fundamentals to AWS/Azure',\n        'Software supply-chain security awareness (via Syft SBOM compliance)',\n        'Cross-functional agile collaboration across time zones (via international Scrum team)'\n      ]\n    },\n    {\n      id: 'fytly',\n      label: 'FytlY (Co-Founder, 2023–2024, shipped to App Store)',\n      facts: '61-screen cross-platform React Native app; OpenAI API integration; HealthKit/Health Connect live telemetry; WebSockets under production load; selected by YSR Capital Munich with a conditional funding offer.',\n      bridges: [\n        'End-to-end cross-platform application development shipped under real production constraints',\n        'Live sensor/telemetry data handling (HealthKit/Health Connect parallels industrial sensor telemetry)',\n        'AI/ML API integration experience — relevant for AI-adjacent or automation-adjacent roles'\n      ]\n    },\n    {\n      id: 'process_analytics',\n      label: 'Process Analytics & BPM coursework',\n      facts: 'Studied BPM lifecycles, process mining techniques, and event log structures; applied bottleneck-analysis methods to sample operational datasets.',\n      bridges: [\n        'Digital manufacturing / operations process optimization and bottleneck analysis',\n        'Structured evaluation of workflow and ticket-handling efficiency'\n      ]\n    },\n    {\n      id: 'n8n_pipeline',\n      label: 'Self-built n8n + Gemini automation pipeline',\n      facts: 'Designed and built a local automation pipeline integrating LLM API calls with structured workflow logic to automate document generation end-to-end.',\n      bridges: [\n        'Practical workflow-automation and low-code integration experience',\n        'Comfort building and maintaining ticket/process automation tooling'\n      ]\n    },\n    {\n      id: 'research_paper',\n      label: 'FAU seminar research: Productivity Paradox of Generative AI in Software Development',\n      facts: 'Analyzed complexity displacement and architectural drift caused by generative AI tools in software engineering workflows.',\n      bridges: [\n        'Analytical, critical-thinking approach to evaluating AI/automation tooling trade-offs',\n        'Relevant for roles involving AI tool governance, evaluation, or rollout'\n      ]\n    }\n  ],\n  banned_phrases: [\n    'leverage', 'cutting-edge', 'passionate about', 'seamlessly', 'revolutionize',\n    'dynamic', 'synergy', 'results-driven', 'self-starter', 'team player',\n    'fast-paced environment', 'out-of-the-box', 'hit the ground running'\n  ]\n};\n\nconst rawJobPage = input['raw_job_page'] || input['Paste Full Job Page Here'] || '';\nconst outputLanguage = input['output_language'] || input['Output Language'] || 'German B1';\n\nconst extractPrompt = `You are a precise, literal information-extraction engine. You read a raw job-posting page dump and output ONLY a single valid JSON object. Do not include markdown code fences, explanations, or any text outside the JSON object. If a field cannot be found, use null (or an empty array for array fields) — never guess or fabricate a value.\n\nExtract structured metadata following these field rules:\n- company_name: exact company name.\n- job_title: copy verbatim, exactly as the posting's main heading, in its original language. Do NOT translate it.\n- job_id: only if explicitly labeled (e.g. \"Job ID\", \"Stellen-ID\", \"514955\"). Else null.\n- location: city name, e.g. \"Erlangen\" or \"Nürnberg\".\n- employment_type: infer from title/context (Werkstudent, Praktikum, Vollzeit, Abschlussarbeit, Duales Studium, Other).\n- industry_sector: infer company's actual industry (e.g. \"Rail & Mobility\", \"Automotive\", \"Energy\", \"Software/IT Consulting\").\n- domain_function: write ONE plain sentence describing what this role does day-to-day in functional terms.\n- team_context: extract any specific department, plant, product, or platform names mentioned (e.g. \"SMO plants\", \"Insights Hub\", \"Industrial Edge\"). Null if none.\n- responsibilities: array of actual duty/responsibility lines from the posting (near-verbatim).\n- requirements: array of actual requirement lines from the posting (near-verbatim).\n- key_tech: array of every named technology, language, tool, or platform mentioned.\n- language_requirement: { \"german_level_required\": \"none_specified | basic | conversational | business_fluent\", \"english_level_required\": \"none_specified | basic | conversational | business_fluent\", \"raw_snippet\": \"literal sentence about language\" }\n- contact_person_full: extract only if named recruiter is explicitly given.\n- contact_gender: infer ONLY from explicit German titles (\"Herr\"/\"Frau\") directly next to name (male | female | unknown).\n- contact_lastname: last name only if found, else null.\n- company_mission_snippet: paraphrase company stated purpose in <=25 words, if present. Else null.\n- flags: array with any of [\"missing_contact\", \"missing_job_id\", \"language_mismatch_risk\", \"bilingual_posting\"].\n\nRAW PAGE DUMP:\n\"\"\"\n${rawJobPage}\n\"\"\"`;\n\nreturn {\n  json: {\n    raw_job_page: rawJobPage,\n    output_language: outputLanguage,\n    candidateArsenal,\n    extract_prompt: extractPrompt\n  }\n};"
+      },
+      "id": "node-inject-context",
+      "name": "Inject Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [320, 300]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "id": "node-gemini-1",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [540, 500],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "gemini-key",
+          "name": "Gemini API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.extract_prompt }}"
+      },
+      "id": "node-extract-metadata",
+      "name": "Extract Job Metadata",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [540, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "function extractJsonFromLLMOutput(raw) {\n  if (!raw) return null;\n  let text = typeof raw === 'string' ? raw : JSON.stringify(raw);\n  text = text.replace(/```json/gi, '').replace(/```/g, '').trim();\n  try {\n    return JSON.parse(text);\n  } catch (e) {\n    const match = text.match(/\\{[\\s\\S]*\\}/);\n    if (match) {\n      try { return JSON.parse(match[0]); } catch (e2) { return null; }\n    }\n    return null;\n  }\n}\n\nconst item = $input.first().json;\nconst ctx = $('Inject Context').first().json;\nconst rawLLMOutput = item.text ?? item.output ?? item.content ?? item;\n\nconst metadata = extractJsonFromLLMOutput(rawLLMOutput) || {\n  company_name: 'Unternehmen',\n  job_title: 'Werkstudent',\n  job_id: null,\n  employment_type: 'Werkstudent',\n  industry_sector: 'Technology',\n  domain_function: 'Unterstützung im IT-Bereich',\n  team_context: null,\n  responsibilities: [],\n  requirements: [],\n  key_tech: [],\n  contact_person_full: null,\n  contact_gender: 'unknown',\n  contact_lastname: null,\n  flags: ['missing_contact']\n};\n\nlet salutationDE, salutationEN;\nif (metadata.contact_lastname && metadata.contact_gender === 'male') {\n  salutationDE = `Sehr geehrter Herr ${metadata.contact_lastname},`;\n  salutationEN = `Dear Mr. ${metadata.contact_lastname},`;\n} else if (metadata.contact_lastname && metadata.contact_gender === 'female') {\n  salutationDE = `Sehr geehrte Frau ${metadata.contact_lastname},`;\n  salutationEN = `Dear Ms. ${metadata.contact_lastname},`;\n} else if (metadata.contact_person_full) {\n  salutationDE = `Sehr geehrte Damen und Herren,`;\n  salutationEN = `Dear ${metadata.contact_person_full},`;\n} else {\n  salutationDE = `Sehr geehrte Damen und Herren,`;\n  salutationEN = `Dear Hiring Team,`;\n}\n\nconst flags = Array.isArray(metadata.flags) ? [...metadata.flags] : [];\nif (metadata.language_requirement?.german_level_required === 'business_fluent') {\n  flags.push('language_mismatch_risk');\n}\nif (!metadata.job_id) flags.push('missing_job_id');\nif (!metadata.contact_person_full) flags.push('missing_contact');\n\nconst isGerman = (ctx.output_language || '').toLowerCase().includes('german');\n\nconst stage5Prompt = `You are helping a candidate write authentic, non-generic cover-letter bullet points.\nYour ONLY job is to connect the candidate's REAL, VERIFIED experience to the SPECIFIC function of the target role — never list technologies without explaining why they matter for this role's actual day-to-day work.\n\nRULES:\n1. Select the 3 requirements/responsibilities with the STRONGEST honest connection to the candidate's proof points from the given pre-approved bridges array. Do not invent a bridge that isn't listed.\n2. Bullet structure: [concrete proof point / project name] + [specific technical action taken, real facts only] + [explicit explanation of why this matters for THIS role's actual function — reference domain_function/team_context by name where natural].\n3. NEVER end a bullet on a bare technology list. Always land on functional relevance to the target role.\n4. BANNED PHRASES (NEVER USE): leverage, cutting-edge, passionate about, seamlessly, revolutionize, dynamic, synergy, results-driven, self-starter, team player, fast-paced environment, out-of-the-box, hit the ground running.\n5. If bridging cloud experience to a role requiring AWS/Azure, phrase honestly as \"transferable cloud fundamentals from GCP\" — never claim direct AWS/Azure production experience.\n6. Vary sentence openers across the 3 bullets.\n7. Language Register: ${isGerman ? 'German B1 (simple, authentic, clear student voice, short sentences)' : 'English C1 (natural, confident professional English)'}.\n8. Write one opening_hook (1-2 sentences) referencing the company's actual mission/team/domain_function to replace generic openers like \"I am pleased to apply.\"\n9. Return ONLY a single valid JSON object (no markdown code fences) with keys: opening_hook, bullet_1, bullet_2, bullet_3, bridge_used.\n\nJOB METADATA:\n${JSON.stringify(metadata, null, 2)}\n\nCANDIDATE PROOF POINTS & BRIDGES:\n${JSON.stringify(ctx.candidateArsenal.proof_points, null, 2)}`;\n\nreturn [{\n  json: {\n    ...ctx,\n    metadata,\n    salutationDE,\n    salutationEN,\n    flags,\n    stage5_prompt: stage5Prompt\n  }\n}];"
+      },
+      "id": "node-parse-meta",
+      "name": "Parse Metadata & Build Bullet Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [760, 300]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "id": "node-gemini-2",
+      "name": "Google Gemini Chat Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [980, 500],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "gemini-key",
+          "name": "Gemini API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.stage5_prompt }}"
+      },
+      "id": "node-write-bullets",
+      "name": "Write Honest Bullets",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [980, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "function extractJsonFromLLMOutput(raw) {\n  if (!raw) return null;\n  let text = typeof raw === 'string' ? raw : JSON.stringify(raw);\n  text = text.replace(/```json/gi, '').replace(/```/g, '').trim();\n  try {\n    return JSON.parse(text);\n  } catch (e) {\n    const match = text.match(/\\{[\\s\\S]*\\}/);\n    if (match) {\n      try { return JSON.parse(match[0]); } catch (e2) { return null; }\n    }\n    return null;\n  }\n}\n\nconst item = $input.first().json;\nconst ctx = $('Parse Metadata & Build Bullet Prompt').first().json;\nconst rawBulletOutput = item.text ?? item.output ?? item.content ?? item;\nconst bullets = extractJsonFromLLMOutput(rawBulletOutput) || {\n  opening_hook: 'Die Verbindung von IT und industriellen Prozessen ist der Schwerpunkt meines Profils.',\n  bullet_1: 'Im FAU-Projekt TaskOrbit habe ich Backend- und Schnittstellenstrukturen mit FastAPI und WebSockets implementiert.',\n  bullet_2: 'Als Co-Founder von FytlY habe ich eine 61-Screen Cross-Platform Anwendung unter realen Produktionsbedingungen umgesetzt.',\n  bullet_3: 'Durch mein Studium im Bereich Process Analytics analysiere ich betriebliche Workflows und Bottlenecks systematisch.',\n  bridge_used: ['taskorbit', 'fytly', 'process_analytics']\n};\n\nconst isGerman = (ctx.output_language || '').toLowerCase().includes('german');\nconst metadata = ctx.metadata;\nconst today = new Date().toLocaleDateString(isGerman ? 'de-DE' : 'en-GB', {\n  day: '2-digit', month: '2-digit', year: 'numeric'\n});\n\nconst subjectLine = isGerman\n  ? `Bewerbung als ${metadata.job_title}${metadata.job_id ? ` – ID: ${metadata.job_id}` : ''}`\n  : `Application for ${metadata.job_title}${metadata.job_id ? ` — ID: ${metadata.job_id}` : ''}`;\n\nconst salutation = isGerman ? ctx.salutationDE : ctx.salutationEN;\n\nconst bridgingParagraph = isGerman\n  ? `Mein Studium an der FAU verbindet technische Informatik mit betriebswirtschaftlichen Prozessen. Dadurch arbeite ich mich schnell in neue Plattformen und Tools ein und bringe mich lösungsorientiert im Team ein.`\n  : `My degree bridges computer science with business processes, allowing me to quickly adapt to new tools and technologies and contribute in a solution-oriented way.`;\n\nconst languageDisclosure = isGerman\n  ? `Mein Masterstudium wird auf Englisch unterrichtet. Ich lerne aktiv Deutsch und besitze aktuell das Niveau B1, das ich im Arbeitsalltag gerne weiter vertiefen möchte.`\n  : `My Master's is taught in English. I actively learn German (currently B1) and look forward to improving further in a professional environment.`;\n\nconst employmentClosingMap = {\n  Werkstudent: {\n    de: 'Ich bin an der FAU immatrikuliert, ab sofort verfügbar und kann meine Wochenstunden flexibel um mein Studium herum gestalten.',\n    en: 'I am enrolled at FAU, available immediately, and can flexibly arrange my weekly hours around my studies.'\n  },\n  Praktikum: {\n    de: 'Ich bin an der FAU immatrikuliert und für den gesamten Praktikumszeitraum verfügbar.',\n    en: 'I am enrolled at FAU and available for the full internship duration.'\n  },\n  Abschlussarbeit: {\n    de: 'Ich bin an der FAU immatrikuliert und freue mich darauf, das Thema meiner Abschlussarbeit mit Ihrem Team abzustimmen.',\n    en: 'I am enrolled at FAU and look forward to aligning my thesis topic with your team.'\n  },\n  Vollzeit: {\n    de: 'Ich schließe mein Studium zeitnah ab und stehe für eine Vollzeitanstellung zur Verfügung.',\n    en: 'I am completing my studies shortly and available for full-time employment.'\n  }\n};\n\nconst empType = metadata.employment_type || 'Werkstudent';\nconst employmentClosing = (employmentClosingMap[empType] || employmentClosingMap.Werkstudent)[isGerman ? 'de' : 'en'];\n\nconst signOff = isGerman\n  ? `Über eine Einladung zum Vorstellungsgespräch würde ich mich sehr freuen.\\n\\nMit freundlichen Grüßen\\n\\nShikhar Thakur`\n  : `I would be very pleased to receive an invitation to an interview.\\n\\nSincerely,\\n\\nShikhar Thakur`;\n\nconst letter = [\n  `Shikhar Thakur`,\n  `Nürnberg, Deutschland | +49 15510180516 | shikhar.thakur@fau.de | linkedin.com/in/shikhar2404`,\n  ``,\n  `${metadata.company_name}`,\n  `Human Resources / Recruiting`,\n  `${metadata.location || 'Nürnberg'}, den ${today}`,\n  ``,\n  subjectLine,\n  ``,\n  salutation,\n  ``,\n  bullets.opening_hook,\n  ``,\n  `• ${bullets.bullet_1}`,\n  `• ${bullets.bullet_2}`,\n  `• ${bullets.bullet_3}`,\n  ``,\n  bridgingParagraph,\n  ``,\n  languageDisclosure,\n  ``,\n  employmentClosing,\n  ``,\n  signOff\n].join('\\n');\n\nconst cleanCompany = (metadata.company_name || 'Company').replace(/[^a-zA-Z0-9]/g, '_');\nconst cleanJobId = (metadata.job_id || 'Role').replace(/[^a-zA-Z0-9]/g, '_');\nconst roleFolder = empType;\nconst filename = `Anschreiben_Shikhar_Thakur_${cleanCompany}_${cleanJobId}`;\n\nreturn [{\n  json: {\n    ...ctx,\n    bullets,\n    letter,\n    filename,\n    cleanCompany,\n    roleFolder,\n    flagsForReview: ctx.flags\n  }\n}];"
+      },
+      "id": "node-assemble-letter",
+      "name": "Assemble Letter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst data = $input.first().json;\n\nconst html = `<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n<style>\n  @page { \n    size: A4; \n    margin: 25mm 20mm 20mm 25mm; \n  }\n  body {\n    font-family: Arial, Helvetica, sans-serif;\n    font-size: 10.5pt;\n    line-height: 1.42;\n    color: #111;\n    margin: 0;\n    white-space: pre-line;\n  }\n</style>\n</head>\n<body>${data.letter.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</body>\n</html>`;\n\nconst htmlPath = `/tmp/${data.filename}.html`;\n\n// Organized target folders\nconst organizedDir = `/Users/shikharthakur/Documents/n8n/companies/${data.cleanCompany}/${data.roleFolder}`;\nfs.mkdirSync(organizedDir, { recursive: true });\n\nconst organizedPdfPath = `${organizedDir}/${data.filename}.pdf`;\nconst downloadsPdfPath = `/Users/shikharthakur/Downloads/${data.filename}.pdf`;\n\nfs.writeFileSync(htmlPath, html, 'utf8');\n\nreturn { \n  json: { \n    ...data, \n    html_path: htmlPath, \n    organized_pdf_path: organizedPdfPath,\n    downloads_pdf_path: downloadsPdfPath,\n    organized_dir: organizedDir\n  } \n};"
+      },
+      "id": "node-build-html",
+      "name": "Build HTML File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1420, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { execSync } = require('child_process');\nconst fs = require('fs');\nconst data = $input.first().json;\n\ntry {\n  // Render PDF using --headless=new and --no-pdf-header-footer to prevent file:/// and dates from appearing\n  execSync(\n    `/Applications/Microsoft\\\\ Edge.app/Contents/MacOS/Microsoft\\\\ Edge --headless=new --disable-gpu --no-pdf-header-footer --print-to-pdf=\"${data.organized_pdf_path}\" \"file://${data.html_path}\" 2>/dev/null`,\n    { timeout: 20000 }\n  );\n  fs.copyFileSync(data.organized_pdf_path, data.downloads_pdf_path);\n} catch(e) {\n  // Handle Edge exit codes\n}\n\n// Read binary for Google Drive upload node\nconst pdfBuffer = fs.readFileSync(data.organized_pdf_path);\n\nreturn [{\n  json: { ...data },\n  binary: {\n    data: {\n      data: pdfBuffer.toString('base64'),\n      mimeType: 'application/pdf',\n      fileName: `${data.filename}.pdf`\n    }\n  }\n}];"
+      },
+      "id": "node-export-pdf",
+      "name": "Export PDF & Prepare Cloud Sync",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1640, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=🎉 Anschreiben erfolgreich generiert & archiviert!\n\n📁 Archiviert in Documents: {{ $json.organized_pdf_path }}\n⚡ Schnellzugriff in Downloads: {{ $json.downloads_pdf_path }}\n\n🏢 Unternehmen: {{ $json.metadata.company_name }}\n🎯 Stelle: {{ $json.metadata.job_title }} (ID: {{ $json.metadata.job_id ?? 'N/A' }})\n📂 Kategorie: {{ $json.roleFolder }}\n👤 Ansprechpartner: {{ $json.metadata.contact_person_full ?? 'Allgemeines Recruiting' }}\n📝 Anrede: {{ $json.salutationDE }}\n\n✍️ Generierte Domain-Bridges:\n• {{ $json.bullets.bullet_1 }}\n• {{ $json.bullets.bullet_2 }}\n• {{ $json.bullets.bullet_3 }}\n\nDie Datei liegt bereit im organisierten Ordner und in Downloads zum Upload!"
+      },
+      "id": "node-confirm-summary",
+      "name": "Confirm & Show Summary",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1860, 300]
+    }
+  ],
+  "connections": {
+    "Form Trigger": {
+      "main": [[{ "node": "Inject Context", "type": "main", "index": 0 }]]
+    },
+    "Inject Context": {
+      "main": [[{ "node": "Extract Job Metadata", "type": "main", "index": 0 }]]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [[{ "node": "Extract Job Metadata", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Extract Job Metadata": {
+      "main": [[{ "node": "Parse Metadata & Build Bullet Prompt", "type": "main", "index": 0 }]]
+    },
+    "Parse Metadata & Build Bullet Prompt": {
+      "main": [[{ "node": "Write Honest Bullets", "type": "main", "index": 0 }]]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [[{ "node": "Write Honest Bullets", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Write Honest Bullets": {
+      "main": [[{ "node": "Assemble Letter", "type": "main", "index": 0 }]]
+    },
+    "Assemble Letter": {
+      "main": [[{ "node": "Build HTML File", "type": "main", "index": 0 }]]
+    },
+    "Build HTML File": {
+      "main": [[{ "node": "Export PDF & Prepare Cloud Sync", "type": "main", "index": 0 }]]
+    },
+    "Export PDF & Prepare Cloud Sync": {
+      "main": [[{ "node": "Confirm & Show Summary", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {}
+}
