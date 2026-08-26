@@ -6,6 +6,8 @@ This system takes a raw, unstructured Job Description (JD) dump as input, struct
 
 ## 🧠 System Architecture
 
+![Agentic Pipeline Architecture](architecture.png)
+
 The pipeline uses a **constrained-generation architecture** to prevent LLM hallucinations. Instead of allowing the LLM to invent qualifications, the system forces the LLM to select from a hardcoded "Candidate Arsenal" (a JSON array of my verified projects and skills) and map them mathematically to the extracted JD requirements.
 
 ### Workflow Nodes
