@@ -6,11 +6,14 @@ This system takes a raw, unstructured Job Description (JD) dump as input, struct
 
 ## 🧠 System Architecture
 
+![Pipeline B v2 — Domain-Bridged + Google Drive & Auto-Folders](pipeline_workflow.png)
+*Full n8n orchestration: form trigger → Gemini extraction & bullets → HTML/PDF export → Google Drive upload.*
+
 ![Pipeline Form Trigger](form_trigger.png)
 *The pipeline entrypoint: A simple web form that accepts unstructured Job Description dumps and language preferences.*
 
 ![Agentic Pipeline Architecture](architecture.png)
-*The n8n orchestration workflow mapping the constraints and generation.*
+*Earlier architecture diagram of the constrained-generation flow.*
 
 The pipeline uses a **constrained-generation architecture** to prevent LLM hallucinations. Instead of allowing the LLM to invent qualifications, the system forces the LLM to select from a hardcoded "Candidate Arsenal" (a JSON array of my verified projects and skills) and map them mathematically to the extracted JD requirements.
 
