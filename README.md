@@ -37,3 +37,9 @@ The pipeline uses a **constrained-generation architecture** to prevent LLM hallu
 
 ## 💡 Why I Built This
 As part of my Master's research in *International Information Systems (Wirtschaftsinformatik)* at FAU, I analyze the "Productivity Paradox of Generative AI." I built this pipeline to demonstrate how constraining probabilistic LLMs with deterministic code (JavaScript/n8n) yields highly reliable, production-ready enterprise automation.
+
+---
+
+Copyright © 2026 Shikhar Thakur.
+
+Released under the MIT License — see [LICENSE](LICENSE).
